@@ -1,0 +1,13 @@
+{
+    "sqltools.connections": [
+        {
+            "database": "oakdream",
+            "dialect": "MySQL",
+            "name": "oakdream",
+            "password": "qwerty123",
+            "port": 3306,
+            "server": "localhost",
+            "username": "oakdream"
+        }
+    ]
+}
