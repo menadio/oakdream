@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Http\Resources\Loan as LoanResource;
+use App\Http\Resources\Schedule as ScheduleResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class Loanee extends JsonResource
@@ -23,9 +24,7 @@ class Loanee extends JsonResource
             'account'   => $this->account,
             'email'     => $this->email,
             'phone'     => $this->phone,
-            'loans'     => LoanResource::collection($this->loans),
-            'approved'  => $this->loans->where('status', 'approved')
-            // 'loans'     => LoanResource::collection($this->whenLoaded('loans')),
+            'loans'     => LoanResource::collection($this->loans)
         ];
     }
 }

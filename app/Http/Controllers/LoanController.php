@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use App\Loan;
+use App\Schedule;
 use App\Http\Resources\Loan as LoanResource;
 use App\Notifications\LoanApproved;
 use App\Notifications\LoanDenied;
@@ -94,7 +96,7 @@ class LoanController extends Controller
 
             return response()->json([
                 'responseStatus'    => 200,
-                'responsemessage'   => 'Successful operation.',
+                'responsemessage'   => 'Update successful.',
                 'loan'              => new LoanResource($loan)
             ]);
         } else {
@@ -186,7 +188,7 @@ class LoanController extends Controller
     {
         $loanAmount     = $loan->principal;
         $loanRate       = $loan->rate->interest;
-        $loanPlan       = $loan->plan_id;
+        // $loanPlan       = $loan->plan->id;
         $loanDuration   = $loan->duration;
 
         // calculate amount to be paid monthly
@@ -195,29 +197,12 @@ class LoanController extends Controller
         // initialize projection array
         $projections = [];
 
-        if ($loanPlan == 1) {
+        if ($loan->plan->name == "Reducing Balance") {
 
-            for ($i = 1; $i <= $loanDuration; $i++) {
-
-                // calculate interest value
-                $interest = ($loanAmount * $loanRate) / 100;
-
-                // calculate amount to payback
-                $paybackAmount = $monthlyPayback + $interest;
-
-                // set reducing balance
-                $loanAmount = $loanAmount - $monthlyPayback;
-
-                // store result in projections array
-                $projections[] = $paybackAmount;
-            }
+            $projections = $this->reducingBalanceLoanPlan($loanAmount, $loanDuration, $loanRate, $monthlyPayback);
         } else {
 
-            for ($i = 1; $i <= $loanDuration; $i++) {
-                // check if $i is equal to $loanDuration
-                // then add interest on loan to the monthlyPayback value
-                $projections[] = ($loanAmount * $loanRate) / 100;
-            }
+            $projections = $this->equalRepaymentPlan($loanAmount, $loanDuration, $loanRate);
         }
 
         $schedule = Carbon::parse($loan->updated_at)->addMonth()->toDateString();
@@ -226,7 +211,9 @@ class LoanController extends Controller
 
             Schedule::create([
                 'loan_id'   => $loan->id,
-                'amount'    => $projections[$i],
+                'amount'    => $projections[$i]['amount'],
+                'interest'  => $projections[$i]['interest'],
+                'total'     => $projections[$i]['total'],
                 'schedule'  => $schedule
             ]);
 
@@ -252,5 +239,66 @@ class LoanController extends Controller
             'responseMessage'   => 'Successful operation.',
             'loanStats'         => $loanStats
         ]);
+    }
+
+    /**
+     * Reducing balance calulation
+     */
+    function reducingBalanceLoanPlan($loanAmount, $loanDuration, $loanRate, $monthlyPayback)
+    {
+        for ($i = 1; $i <= $loanDuration; $i++) {
+
+            // calculate interest value
+            $interest = ($loanAmount * $loanRate) / 100;
+
+            // calculate amount to payback
+            $paybackAmount = $monthlyPayback;
+
+            // set projection
+            $projection = [
+                'amount'    => $paybackAmount,
+                'interest'  => $interest,
+                'total'     => $paybackAmount + $interest
+            ];
+
+            // store result in projections array
+            $projections[] = $projection;
+
+            // set reducing balance
+            $loanAmount = $loanAmount - $monthlyPayback;
+
+        }
+
+        return $projections;
+    }
+
+    /**
+     * Monthly dureation calculation
+     */
+    function equalRepaymentPlan($loanAmount, $loanDuration, $loanRate)
+    {
+        for ($i = 1; $i <= $loanDuration; $i++) {
+            // calculate monthly payback amount
+            $paybackAmount = ($loanAmount * $loanRate) / 100;
+
+            // is i the last month of the loan
+            if ($i == $loanDuration) {
+                $projection = [
+                    'amount'    => 0,
+                    'interest'  => $paybackAmount,
+                    'total'     => $paybackAmount + $loanAmount
+                ];
+            } else {
+                $projection = [
+                    'amount'    => 0,
+                    'interest'  => $paybackAmount,
+                    'total'     => $paybackAmount
+                ];
+            }
+
+            $projections[] = $projection;
+        }
+
+        return $projections;
     }
 }

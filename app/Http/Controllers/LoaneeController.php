@@ -20,7 +20,7 @@ class LoaneeController extends Controller
     {
         return response()->json([
             'responseStatus'    => 200,
-            'responseMessage'   => 'Account created.',
+            'responseMessage'   => 'Successful operation.',
             'loanees'           => LoaneeResource::collection(Loanee::orderBy('created_at', 'desc')->get())
         ]);
     }
@@ -104,7 +104,7 @@ class LoaneeController extends Controller
 
             return response()->json([
                 'responseStatus'    => 200,
-                'responseMessage'   => 'Account created.',
+                'responseMessage'   => 'Account updated.',
                 'loanee'            => new LoaneeResource($loanee)
             ]);
         }
@@ -123,7 +123,7 @@ class LoaneeController extends Controller
 
             return response()->json([
                 'responseStatus'    => 204,
-                'responseMessage'   => 'Loanee account removed.',
+                'responseMessage'   => 'Account removed.',
             ]);
         }
     }
@@ -151,32 +151,4 @@ class LoaneeController extends Controller
             'loaneeStats'       => $loaneeStats
         ]);
     }
-
-    /**
-     * Get single loanee stats
-     *
-     * @param App\Loan
-     * @param App\Loanee $loanee
-     * @return \Illuminate\Http\Response
-     */
-    // public function loanStats($loanee)
-    // {
-    //     $loanStats = [
-    //         'approved'  => Loan::where([
-    //             ['status', 'approved'], ['loanee_id', $loanee->id]
-    //         ])->count(),
-    //         'denied'    => Loan::where([
-    //             ['status', 'denied'], ['loanee_id', $loanee->id]
-    //         ])->count(),
-    //         'pending'   => Loan::where([
-    //             ['status', 'pending'], ['loanee_id', $loanee->id]
-    //         ])->count(),
-    //     ];
-
-    //     return response()->json([
-    //         'responseStatus'    => 200,
-    //         'responseMessage'   => 'Successful operation.',
-    //         'loanStats'         => $loanStats
-    //     ]);
-    // }
 }

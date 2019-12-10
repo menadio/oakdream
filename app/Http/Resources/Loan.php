@@ -19,14 +19,15 @@ class Loan extends JsonResource
 
         return [
             'id'        => $this->id,
-            'customer'  => $this->loanee->firstname . ' ' . $this->loanee->lastname,
+            'customer'  => ucfirst($this->loanee->firstname) . ' ' . ucfirst($this->loanee->lastname),
             'reference' => $this->reference,
             'amount'    => number_format($this->principal, 2),
-            // 'interest'  => $this->rate->interest,
-            'plan'      => $this->plan->name,
-            'duration'  => $this->duration,
-            'status'    => $this->status,
-            'schedules' => ScheduleResource::collection($this->schedules)
+            'interest'  => $this->rate->interest,
+            'plan'      => ucfirst($this->plan->name),
+            'duration'  => $this->duration . ' months',
+            'status'    => ucfirst($this->status),
+            'comment'   => $this->comment,
+            'schedules' => $this->when($this->status == 'approved', ScheduleResource::collection($this->schedules))
         ];
     }
 }
