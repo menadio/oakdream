@@ -16,9 +16,9 @@ class ScheduleController extends Controller
     public function index()
     {
         return response()->json([
-            'responseStatus'    => 200,
-            'responsemessage'   => 'Successful operation.',
-            'schedules'         => ScheduleResource::collection(Schedule::all())
+            'success'   => true,
+            'message'   => 'Retrieved schedules successfully.',
+            'data'      => ScheduleResource::collection(schedule::paginate(5))
         ]);
     }
 
@@ -32,9 +32,9 @@ class ScheduleController extends Controller
     {
         if ($schedule) {
             return response()->json([
-                'responseStatus'    => 200,
-                'responsemessage'   => 'Successful operation.',
-                'schedule'          => new ScheduleResource($schedule)
+                'success'   => true,
+                'message'   => 'Retrived schedule details successfully.',
+                'data'      => new ScheduleResource($schuedle)
             ]);
         }
     }

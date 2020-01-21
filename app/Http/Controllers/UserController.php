@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\User;
 use App\Http\Resources\User as UserResource;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
@@ -16,10 +17,10 @@ class UserController extends Controller
     public function index()
     {
         return response()->json([
-            'responseStatus'    => 200,
-            'responsemessage'   => 'Successful operation.',
-            'loanOfficers'      => UserResource::collection(User::all())
-        ]);
+            'success'   => true,
+            'message'   => 'Operation successful.',
+            'data'      => UserResource::collection(User::paginate(5)),
+        ], 200);
     }
 
     /**
@@ -30,24 +31,38 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
+        // validate user input
+        $validator = Validator::make($request->all(), [
+            'firstname' => 'required',
+            'lastname'  => 'required',
+            'email'     => 'required|email|unique:users',
+            'password'  => 'required|min:8'
+        ]);
+
+        if ($validator->fails()) {
+            $errors = $validator->errors();
+
+            return response()->json([
+                'success'   => false,
+                'message'   => 'Validation error.',
+                'data'      => $errors
+            ], 422);
+        }
+
+        // create user resource if user input pass validation
         $loanOfficer = User::create([
-            'firstname' => $request->firstname,
-            'lastname'  => $request->lastname,
+            'firstname' => ucfirst($request->firstname),
+            'lastname'  => ucfirst($request->lastname),
             'email'     => $request->email,
             'password'  => $request->password
         ]);
 
         if ($loanOfficer) {
             return response()->json([
-                'responseStatus'    => 201,
-                'responsemessage'   => 'Account created.',
-                'loanOfficer'      => new UserResource($loanOfficer)
-            ]);
-        } else {
-            return response()->json([
-                'responseStatus'    => 400,
-                'responsemessage'   => 'Unable to create account.',
-            ]);
+                'success'       => true,
+                'message'       => 'User account created successfully.',
+                'data'          => new UserResource($loanOfficer)
+            ], 201);
         }
     }
 
@@ -61,9 +76,9 @@ class UserController extends Controller
     {
         if ($user) {
             return response()->json([
-                'responseStatus'    => 200,
-                'responsemessage'   => 'Account created.',
-                'loanOfficer'       => new UserResource($user)
+                'success'   => true,
+                'message'   => 'Operation successful.',
+                'data'      => new UserResource($user)
             ]);
         }
     }
@@ -78,13 +93,13 @@ class UserController extends Controller
     public function update(Request $request, User $user)
     {
         if ($user) {
-            $user->update($request->only(['firstname', 'lastname', 'email']));
+            $user->update($request->only([ucfirst('firstname'), ucfirst('lastname'), 'email']));
 
             return response()->json([
-                'responseStatus'    => 200,
-                'responsemessage'   => 'Account updated.',
-                'loanOfficer'       => new UserResource($user)
-            ]);
+                'success'   => true,
+                'message'   => 'Account updated.',
+                'data'      => new UserResource($user)
+            ], 200);
         }
     }
 
@@ -100,9 +115,9 @@ class UserController extends Controller
             $user->delete();
 
             return response()->json([
-                'responseStatus'    => 204,
-                'responsemessage'   => 'Account removed.',
-            ]);
+                'success'   => true,
+                'message'   => 'Account deleted.',
+            ], 200);
         }
     }
 
@@ -116,13 +131,27 @@ class UserController extends Controller
     public function updatePassword(Request $request, User $user)
     {
         if ($user) {
+            // validate user input
+            $validator = Validator::make($request->all(), [
+                'password' => 'required|min:8'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success'   => false,
+                    'message'   => 'Failed validation.',
+                    'data'      => $validator->errors()
+                ]);
+            }
+
+            // update password if user input pass validation
             $user->update($request->only(['password']));
 
             return response()->json([
-                'responseStatus'    => 200,
-                'responsemessage'   => 'Password updated.',
-                'loanOfficer'       => new UserResource($user)
-            ]);
+                'success'   => true,
+                'message'   => 'Password updated successfully.',
+                'data'      => new UserResource($user)
+            ], 200);
         }
     }
 }

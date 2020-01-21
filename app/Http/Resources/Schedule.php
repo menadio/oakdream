@@ -14,6 +14,13 @@ class Schedule extends JsonResource
      */
     public function toArray($request)
     {
-        return parent::toArray($request);
+        return [
+            'id'            => $this->id,
+            'loan_id'       => $this->loan_id,
+            'amount'        => number_format($this->amount, 2),
+            'interest'      => number_format($this->interest, 2),
+            'total'         => number_format($this->total, 2),
+            'schedule'      => $this->schedule,
+        ];
     }
 }

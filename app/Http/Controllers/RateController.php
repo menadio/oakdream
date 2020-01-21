@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Rate;
 use App\Http\Resources\Rate as RateResource;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class RateController extends Controller
 {
@@ -16,10 +17,10 @@ class RateController extends Controller
     public function index()
     {
         return response()->json([
-            'responseStatus'    => 200,
-            'responseMessage'   => 'Successful operation.',
-            'rates'             => RateResource::collection(Rate::orderBy('created_at', 'desc')->get())
-        ]);
+            'success'   => true,
+            'message'   => 'Successful operation.',
+            'data'      => RateResource::collection(Rate::orderBy('created_at', 'desc')->paginate(5))
+        ], 200);
     }
 
     /**
@@ -30,19 +31,28 @@ class RateController extends Controller
      */
     public function store(Request $request)
     {
+        // validate user input
+        $validator = Validator::make($request->all(), [
+            'interest'  => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success'   => false,
+                'message'   => 'Failed validation.',
+                'data'      => $validator->errors()
+            ]);
+        }
+
+        // create new rate
         $rate = Rate::create(['interest' => $request->interest]);
 
         if ($rate) {
             return response()->json([
-                'responseStatus'    => 201,
-                'responseMessage'   => 'New rate created.',
-                'rate'              => new RateResource($rate)
-            ]);
-        } else {
-            return response()->json([
-                'responseStatus'    => 400,
-                'responsemessage'   => 'Unable to create rate.',
-            ]);
+                'success'   => true,
+                'message'   => 'New rate created.',
+                'data'      => new RateResource($rate)
+            ], 201);
         }
     }
 
@@ -56,10 +66,10 @@ class RateController extends Controller
     {
         if ($rate) {
             return response()->json([
-                'responseStatus'    => 200,
-                'responseMessage'   => 'Successful operation.',
-                'rate'              => new RateResource($rate)
-            ]);
+                'success'   => true,
+                'message'   => 'Retrieved rate details successfully.',
+                'data'      => new RateResource($rate)
+            ], 200);
         }
     }
 
@@ -76,10 +86,10 @@ class RateController extends Controller
             $rate->update($request->only(['interest']));
 
             return response()->json([
-                'responseStatus'    => 200,
-                'responseMessage'   => 'Rate updated.',
-                'rate'              => new RateResource($rate)
-            ]);
+                'success'   => true,
+                'message'   => 'Rate updated.',
+                'data'      => new RateResource($rate)
+            ], 200);
         }
     }
 
@@ -95,9 +105,9 @@ class RateController extends Controller
             $rate->delete();
 
             return response()->json([
-                'responseStatus'    => 204,
-                'responseMessage'   => 'Rate removed.',
-            ]);
+                'success'    => true,
+                'message'   => 'Rate removed.',
+            ], 200);
         }
     }
 }

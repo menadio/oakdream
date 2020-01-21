@@ -16,13 +16,13 @@ class Loanee extends JsonResource
      */
     public function toArray($request)
     {
-        // return parent::toArray($request);
         return [
             'id'        => $this->id,
             'firstname' => $this->firstname,
             'lastname'  => $this->lastname,
             'account'   => $this->account,
             'email'     => $this->email,
+            'address'   => ucwords($this->address),
             'phone'     => $this->phone,
             'loans'     => LoanResource::collection($this->loans)
         ];

@@ -8,6 +8,7 @@ use App\Notifications\Welcome;
 use App\Http\Resources\Loanee as LoaneeResource;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class LoaneeController extends Controller
 {
@@ -19,10 +20,10 @@ class LoaneeController extends Controller
     public function index()
     {
         return response()->json([
-            'responseStatus'    => 200,
-            'responseMessage'   => 'Successful operation.',
-            'loanees'           => LoaneeResource::collection(Loanee::orderBy('created_at', 'desc')->get())
-        ]);
+            'success'   => true,
+            'message'   => 'Retrieved customers successfully.',
+            'data'      => LoaneeResource::collection(Loanee::orderBy('created_at', 'desc')->paginate(5))
+        ], 200);
     }
 
     /**
@@ -33,30 +34,42 @@ class LoaneeController extends Controller
      */
     public function store(Request $request)
     {
+        // validate user input
+        $validator = Validator::make($request->all(), [
+            'firstname' => 'required',
+            'lastname'  => 'required',
+            'email'     => 'email|unique:loanees',
+            'address'   => 'required',
+            'phone'     => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success'   => false,
+                'message'   => 'Failed validation.',
+                'data'      => $validator->errors()
+            ], 422);
+        }
+
+        // create account if user input pass validation
         $loanee = Loanee::create([
             'account'   => rand(1000000000, 9999999999),
-            'firstname' => $request->firstname,
-            'lastname'  => $request->lastname,
+            'firstname' => ucfirst($request->firstname),
+            'lastname'  => ucfirst($request->lastname),
             'email'     => $request->email,
             'address'   => $request->address,
             'phone'     => $request->phone
         ]);
 
         if ($loanee) {
-
             // notify loanee
             $loanee->notify(new Welcome($loanee));
 
             return response()->json([
-                'responseStatus'    => 201,
-                'responseMessage'   => 'Account created.',
-                'loanee'            => new LoaneeResource($loanee)
-            ]);
-        } else {
-            return response()->json([
-                'responseStatus'    => 400,
-                'responseMessage'   => 'Unable to create loanee account.',
-            ]);
+                'success'   => true,
+                'message'   => 'Account created.',
+                'data'      => new LoaneeResource($loanee)
+            ], 201);
         }
     }
 
@@ -69,24 +82,11 @@ class LoaneeController extends Controller
     public function show(Loanee $loanee)
     {
         if ($loanee) {
-            $loanStats = [
-                'approved'  => Loan::where([
-                    ['status', 'approved'], ['loanee_id', $loanee->id]
-                ])->count(),
-                'denied'    => Loan::where([
-                    ['status', 'denied'], ['loanee_id', $loanee->id]
-                ])->count(),
-                'pending'   => Loan::where([
-                    ['status', 'pending'], ['loanee_id', $loanee->id]
-                ])->count(),
-            ];
-
             return response()->json([
-                'responseStatus'    => 200,
-                'responseMessage'   => 'Successful operation.',
-                'loanee'            => new LoaneeResource($loanee),
-                'loanStats'         => $loanStats
-            ]);
+                'success'   => true,
+                'message'   => 'Retrieved customer details successfully.',
+                'data'      => new LoaneeResource($loanee),
+            ], 200);
         }
     }
 
@@ -100,13 +100,14 @@ class LoaneeController extends Controller
     public function update(Request $request, Loanee $loanee)
     {
         if ($loanee) {
+            // update customer details
             $loanee->update($request->only(['firstname', 'lastname', 'email', 'address', 'phone']));
 
             return response()->json([
-                'responseStatus'    => 200,
-                'responseMessage'   => 'Account updated.',
-                'loanee'            => new LoaneeResource($loanee)
-            ]);
+                'success'   => true,
+                'message'   => 'Account updated.',
+                'data'      => new LoaneeResource($loanee)
+            ], 200);
         }
     }
 
@@ -122,9 +123,9 @@ class LoaneeController extends Controller
             $loanee->delete();
 
             return response()->json([
-                'responseStatus'    => 204,
-                'responseMessage'   => 'Account removed.',
-            ]);
+                'success'    => true,
+                'message'   => 'Account removed.',
+            ], 200);
         }
     }
 
@@ -146,9 +147,38 @@ class LoaneeController extends Controller
         ];
 
         return response()->json([
-            'responseStatus'    => 200,
-            'responseMessage'   => 'Successful operation.',
-            'loaneeStats'       => $loaneeStats
+            'success'   => true,
+            'message'   => 'Retrieved statistics successfully.',
+            'data'      => $loaneeStats
         ]);
+    }
+
+    /**
+     * Get customer loan statistics
+     *
+     * @param Loanee $loanee
+     * @return Response
+     */
+    public function loaneeStats(Loanee $loanee)
+    {
+        if ($loanee) {
+            $loanStats = [
+                'approved'  => Loan::where([
+                    ['status', 'approved'], ['loanee_id', $loanee->id]
+                ])->count(),
+                'denied'    => Loan::where([
+                    ['status', 'denied'], ['loanee_id', $loanee->id]
+                ])->count(),
+                'pending'   => Loan::where([
+                    ['status', 'pending'], ['loanee_id', $loanee->id]
+                ])->count(),
+            ];
+
+            return response()->json([
+                'success'   => true,
+                'message'   => 'Retrieved customer loans statistics.',
+                'data'      => $loanStats
+            ], 200);
+        }
     }
 }

@@ -15,11 +15,9 @@ class Loan extends JsonResource
      */
     public function toArray($request)
     {
-        // return parent::toArray($request);
-
         return [
             'id'        => $this->id,
-            'customer'  => ucfirst($this->loanee->firstname) . ' ' . ucfirst($this->loanee->lastname),
+            'customer_id'  => $this->loanee->id,
             'reference' => $this->reference,
             'amount'    => number_format($this->principal, 2),
             'interest'  => $this->rate->interest,

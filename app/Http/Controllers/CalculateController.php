@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class CalculateController extends Controller
 {
@@ -15,6 +16,22 @@ class CalculateController extends Controller
      */
     public function calculate(Request $request)
     {
+        // validate user input
+        $validator = Validator::make($request->all(), [
+            'amount'    => 'required',
+            'rate'      => 'required',
+            'plan'      => 'required',
+            'duration'  => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success'   => false,
+                'message'   => 'Failed validation.',
+                'data'      => $validator->errors()
+            ], 422);
+        }
+
         $amount     = $request->amount;
         $rate       = $request->rate;
         $plan       = $request->plan;
@@ -26,9 +43,9 @@ class CalculateController extends Controller
 
         // return repaymentSchedule array
         return response()->json([
-            'responseStatus'    => 200,
-            'responseMesaage'   => 'Successful operation',
-            'paymentSchedule'   => $paymentSchedule
+            'success'   => true,
+            'message'   => 'Successful operation',
+            'data'      => $paymentSchedule
         ]);
     }
 

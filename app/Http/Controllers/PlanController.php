@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Plan;
 use App\Http\Resources\Plan as PlanResource;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class PlanController extends Controller
 {
@@ -16,9 +17,9 @@ class PlanController extends Controller
     public function index()
     {
         return response()->json([
-            'responseStatus'    => 200,
-            'responseMessage'   => 'Successful operation.',
-            'plans'             => PlanResource::collection(Plan::orderBy('created_at', 'desc')->get())
+            'success'   => true,
+            'message'   => 'Successful operation.',
+            'data'      => PlanResource::collection(Plan::orderBy('created_at', 'desc')->paginate(5))
         ]);
     }
 
@@ -30,21 +31,30 @@ class PlanController extends Controller
      */
     public function store(Request $request)
     {
+        // validate user input
+        $validator = Validator::make($request->all(), [
+            'name'  => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success'   => false,
+                'message'   => 'Falied validation.',
+                'data'      => $validator->errors()
+            ]);
+        }
+
+        // create new plan
         $plan = Plan::create([
             'name'  => $request->name
         ]);
 
         if ($plan) {
             return response()->json([
-                'responseStatus'    => 201,
-                'responseMessage'   => 'Plan created.',
-                'plan'              => new PlanResource($plan)
-            ]);
-        } else {
-            return response()->json([
-                'responseStatus'    => 400,
-                'responseMessage'   => 'Unable to create plan.',
-            ]);
+                'success'   => true,
+                'message'   => 'Plan created.',
+                'data'      => new PlanResource($plan)
+            ], 201);
         }
     }
 
@@ -58,10 +68,10 @@ class PlanController extends Controller
     {
         if ($plan) {
             return response()->json([
-                'responseStatus'    => 200,
-                'responseMessage'   => 'Successful operation.',
-                'plan'              => new PlanResource($plan)
-            ]);
+                'success'   => true,
+                'message'   => 'Retrieved plan details successfully.',
+                'data'      => new PlanResource($plan)
+            ], 200);
         }
     }
 
@@ -78,10 +88,10 @@ class PlanController extends Controller
             $plan->update($request->only(['name']));
 
             return response()->json([
-                'responseStatus'    => 200,
-                'responseMessage'   => 'Plan updated.',
-                'plan'              => new PlanResource($plan)
-            ]);
+                'success'   => true,
+                'message'   => 'Plan updated.',
+                'data'      => new PlanResource($plan)
+            ], 200);
         }
     }
 
@@ -97,9 +107,9 @@ class PlanController extends Controller
             $plan->delete();
 
             return response()->json([
-                'responseStatus'    => 204,
-                'responseMessage'   => 'Plan removed.',
-            ]);
+                'success'   => true,
+                'message'   => 'Plan removed.',
+            ], 200);
         }
     }
 }

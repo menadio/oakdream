@@ -10,6 +10,7 @@ use App\Notifications\LoanApproved;
 use App\Notifications\LoanDenied;
 use App\Notifications\LoanRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class LoanController extends Controller
 {
@@ -21,9 +22,9 @@ class LoanController extends Controller
     public function index()
     {
         return response()->json([
-            'responseStatus'    => 200,
-            'responsemessage'   => 'Successful operation.',
-            'loans'             => LoanResource::collection(Loan::orderBy('created_at', 'desc')->get())
+            'success'   => 200,
+            'message'   => 'Successful operation.',
+            'data'      => LoanResource::collection(Loan::orderBy('created_at', 'desc')->paginate(5))
         ]);
     }
 
@@ -35,6 +36,23 @@ class LoanController extends Controller
      */
     public function store(Request $request)
     {
+        // validate user input
+        $validator = Validator::make($request->all(), [
+            'principal' => 'required',
+            'rate'      => 'required',
+            'plan'      => 'required',
+            'duration'  => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success'   => false,
+                'message'   => 'Failed validation.',
+                'data'      => $validator->errors()
+            ], 422);
+        }
+
+        // create loan if user input pass validation
         $loan = Loan::create([
             'user_id'   => $request->user_id,
             'loanee_id' => $request->loanee_id,
@@ -46,20 +64,14 @@ class LoanController extends Controller
         ]);
 
         if ($loan) {
-
             // notify loanee
             $loan->loanee->notify(new LoanRequest($loan));
 
             return response()->json([
-                'responseStatus'    => 201,
-                'responsemessage'   => 'Loan created.',
-                'loan'              => new LoanResource($loan)
-            ]);
-        } else {
-            return response()->json([
-                'responseStatus'    => 400,
-                'responsemessage'   => 'Unable to place loan order.',
-            ]);
+                'success'   => true,
+                'message'   => 'Loan created.',
+                'data'      => new LoanResource($loan)
+            ], 201);
         }
     }
 
@@ -73,9 +85,9 @@ class LoanController extends Controller
     {
         if ($loan) {
             return response()->json([
-                'responseStatus'    => 200,
-                'responsemessage'   => 'Successful operation.',
-                'loan'              => new LoanResource($loan)
+                'success'    => true ,
+                'emessage'   => 'Successful operation.',
+                'data'       => new LoanResource($loan)
             ]);
         }
     }
@@ -95,15 +107,10 @@ class LoanController extends Controller
             ]));
 
             return response()->json([
-                'responseStatus'    => 200,
-                'responsemessage'   => 'Update successful.',
-                'loan'              => new LoanResource($loan)
-            ]);
-        } else {
-            return response()->json([
-                'responseStatus'    => 403,
-                'responsemessage'   => 'Loan has already been reviewed. Please place make new request.',
-            ]);
+                'success'   => true,
+                'message'   => 'Update successful.',
+                'data'      => new LoanResource($loan)
+            ], 200);
         }
     }
 
@@ -119,9 +126,9 @@ class LoanController extends Controller
             $loan->delete();
 
             return response()->json([
-                'responseStatus'    => 204,
-                'responsemessage'   => 'Loan removed.',
-            ]);
+                'success'    => true,
+                'message'   => 'Loan removed.',
+            ], 200);
         }
     }
 
@@ -146,9 +153,9 @@ class LoanController extends Controller
             $this->createPaymentSchedule($loan);
 
             return response()->json([
-                'responseStatus'    => 200,
-                'responsemessage'   => 'Loan approved.',
-                'loan'              => new LoanResource($loan)
+                'success'   => 200,
+                'message'   => 'Loan approved.',
+                'data'      => new LoanResource($loan)
             ]);
         }
     }
@@ -172,10 +179,10 @@ class LoanController extends Controller
             $loan->loanee->notify(new LoanDenied($loan));
 
             return response()->json([
-                'responseStatus'    => 200,
-                'responsemessage'   => 'Loan denied.',
-                'loan'              => new LoanResource($loan)
-            ]);
+                'success'   => true,
+                'message'   => 'Loan denied.',
+                'data'      => new LoanResource($loan)
+            ], 200);
         }
     }
 
@@ -188,7 +195,6 @@ class LoanController extends Controller
     {
         $loanAmount     = $loan->principal;
         $loanRate       = $loan->rate->interest;
-        // $loanPlan       = $loan->plan->id;
         $loanDuration   = $loan->duration;
 
         // calculate amount to be paid monthly
@@ -198,17 +204,12 @@ class LoanController extends Controller
         $projections = [];
 
         if ($loan->plan->name == "Reducing Balance") {
-
             $projections = $this->reducingBalanceLoanPlan($loanAmount, $loanDuration, $loanRate, $monthlyPayback);
-        } else {
-
-            $projections = $this->equalRepaymentPlan($loanAmount, $loanDuration, $loanRate);
         }
 
         $schedule = Carbon::parse($loan->updated_at)->addMonth()->toDateString();
 
         for ($i = 0; $i < count($projections); $i++) {
-
             Schedule::create([
                 'loan_id'   => $loan->id,
                 'amount'    => $projections[$i]['amount'],
@@ -235,10 +236,10 @@ class LoanController extends Controller
         ];
 
         return response()->json([
-            'responseStatus'    => 200,
-            'responseMessage'   => 'Successful operation.',
-            'loanStats'         => $loanStats
-        ]);
+            'success'   => 200,
+            'message'   => 'Retrieved loans statistics successfully.',
+            'data'      => $loanStats
+        ], 200);
     }
 
     /**
@@ -266,7 +267,6 @@ class LoanController extends Controller
 
             // set reducing balance
             $loanAmount = $loanAmount - $monthlyPayback;
-
         }
 
         return $projections;
@@ -284,7 +284,7 @@ class LoanController extends Controller
             // is i the last month of the loan
             if ($i == $loanDuration) {
                 $projection = [
-                    'amount'    => 0,
+                    'amount'    => $loanAmount,
                     'interest'  => $paybackAmount,
                     'total'     => $paybackAmount + $loanAmount
                 ];
